@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Greenway Botanical Garden — find your way</title>
+<meta name="description" content="A quiet garden off Kent Ave by the Brooklyn Navy Yard. Walking directions on our own little map.">
+<meta name="theme-color" content="#F4EFE4">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app">
+
+<!-- A · landing -->
+<section class="screen" id="s-landing">
+  <div class="map h-hero" id="m-landing"></div>
+  <div class="pad">
+    <h1>A quiet garden, a short walk away.</h1>
+    <p>Greenway Botanical Garden, tucked off Kent Ave by the Navy Yard. We’ll draw your walk on our own little map.</p>
+    <div class="chip" id="open-chip"><span class="dot" aria-hidden="true"></span><span>Checking hours…</span></div>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-top:4px">
+      <button class="btn" id="go"><span>Show me the way</span><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12H20M14 6l6 6-6 6"/></svg></button>
+      <p class="small">Asks for your location once. It never leaves this phone.</p>
+    </div>
+    <button class="btn ghost" id="landmarks">I’ll find it with landmarks</button>
+    <div class="foot mono"><span>BGI · Brooklyn Greenway</span><span id="src-label"></span></div>
+  </div>
+</section>
+
+<!-- B · route -->
+<section class="screen" id="s-route" hidden>
+  <div class="map h-route" id="m-route"></div>
+  <div class="topbar">
+    <button class="back" data-go="landing">← BGI</button>
+    <button class="iconbtn" id="recenter" aria-label="Recenter on me"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="5"/><path d="M11 1v3M11 18v3M1 11h3M18 11h3"/></svg></button>
+  </div>
+  <div class="sheet">
+    <div class="handle" aria-hidden="true"></div>
+    <div class="eta">
+      <div><b id="eta-min">— min</b><span class="mono" id="eta-dist">on foot</span></div>
+      <span class="tag">walking</span>
+    </div>
+    <ol class="steps" id="steps"></ol>
+    <p class="note">Map apps often miss this entrance. Turn onto Williamsburg St West from Kent Ave.</p>
+    <a class="small" id="ext-walk" href="#">Prefer turn-by-turn? Open in your maps app</a>
+    <div class="foot mono"><span id="gps-state">updates as you walk</span></div>
+  </div>
+</section>
+
+<!-- C · almost there -->
+<section class="screen" id="s-arrive" hidden>
+  <div class="map h-close" id="m-arrive"></div>
+  <div class="topbar"><span class="chip open mono" id="arrive-dist">nearly there</span></div>
+  <div class="pad">
+    <h1>You’re basically here.</h1>
+    <div class="row">
+      <div class="sign" role="img" aria-label="The green code sign at the entrance"><div class="a"></div><div class="b"><i></i><i></i></div><div class="post"></div></div>
+      <p>Look for the <b>green code at the Williamsburg St West entrance</b>, by the brochures. Scan it with your camera to collect this season’s stamp.</p>
+    </div>
+    <p class="small">No bikes or dogs inside. Bike racks are free.</p>
+    <div class="foot mono"><button class="back" data-go="route">← route</button><span id="arrive-hours"></span></div>
+  </div>
+</section>
+
+<!-- D · too far -->
+<section class="screen" id="s-far" hidden>
+  <div class="pad">
+    <div style="display:flex;justify-content:space-between;align-items:center"><button class="back" data-go="landing">← BGI</button><span class="mono">outside our map</span></div>
+    <svg class="compass" viewBox="0 0 300 300" role="img" aria-label="Arrow pointing toward the garden" id="compass">
+      <defs><pattern id="cDots" width="7" height="7" patternUnits="userSpaceOnUse"><circle cx="3.5" cy="3.5" r="1.4" fill="#1F3D30"/></pattern></defs>
+      <circle cx="150" cy="150" r="128" fill="#00A95C" style="mix-blend-mode:multiply"/>
+      <circle cx="160" cy="160" r="128" fill="url(#cDots)" opacity=".25"/>
+      <circle cx="150" cy="150" r="140" fill="none" stroke="#1F3D30" stroke-width="2" stroke-dasharray="2 8" stroke-linecap="round"/>
+      <text x="150" y="20" text-anchor="middle" fill="#1F3D30" font-size="12" font-family="DM Mono, monospace">N</text>
+      <circle cx="150" cy="150" r="96" fill="#F4EFE4"/>
+      <g id="needle">
+        <path d="M150 40 L196 190 L150 166 L104 190Z" fill="#FFE800" style="mix-blend-mode:multiply"/>
+        <path d="M156 36 L202 186 L156 162 L110 186Z" fill="#FF48B0" style="mix-blend-mode:multiply"/>
+        <path d="M150 40 L196 190 L150 166 L104 190Z" fill="none" stroke="#1F3D30" stroke-width="2" stroke-linejoin="round"/>
+      </g>
+      <circle cx="150" cy="150" r="6" fill="#1F3D30"/>
+    </svg>
+    <h1 id="far-h">That way.</h1>
+    <p>Too far to walk from here. Hop on one of these, then our map takes over.</p>
+    <ul class="transit" id="transit"></ul>
+    <a class="btn" id="ext-transit" href="#"><span>Transit in Maps</span><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7M9 7h8v8"/></svg></a>
+    <button class="btn ghost" id="remind">Remind me this weekend</button>
+    <p class="small">Saves a calendar reminder to your phone. No account, no email.</p>
+  </div>
+</section>
+
+<!-- E · landmarks (no location) -->
+<section class="screen" id="s-noloc" hidden>
+  <div class="map h-hero" id="m-noloc"></div>
+  <div class="topbar"><button class="back" data-go="landing">← BGI</button></div>
+  <div class="pad">
+    <h1>Find it by landmarks.</h1>
+    <p class="small" id="noloc-why" hidden></p>
+    <ol class="steps">
+      <li>Get to Kent Ave at Hooper St</li>
+      <li>Turn right onto Williamsburg St West</li>
+      <li>Entrance is between Kent &amp; Flushing</li>
+    </ol>
+    <div class="addr"><span id="addr-text"></span><button id="copy">Copy</button></div>
+    <button class="btn" id="retry"><span>Try my location after all</span></button>
+  </div>
+</section>
+
+<!-- F · at the gate (?at=gate) -->
+<section class="screen" id="s-gate" hidden>
+  <div class="pad">
+    <div class="mono" style="display:flex;justify-content:space-between"><span>BGI · check-in</span><span id="visit-n"></span></div>
+    <h1 id="gate-h">You made it.</h1>
+    <p id="gate-sub"></p>
+    <div class="stamp-hero" id="stamp-hero"></div>
+    <div class="rating" id="rating">
+      <h2>How quiet was it?</h2>
+      <span class="mono" id="rating-state">one tap · anonymous</span>
+      <button class="opt" data-r="pin" aria-pressed="false"><span class="g" aria-hidden="true">·</span>Pin-drop quiet</button>
+      <button class="opt" data-r="hum" aria-pressed="false"><span class="g" aria-hidden="true">~</span>A soft hum</button>
+      <button class="opt" data-r="busy" aria-pressed="false"><span class="g" aria-hidden="true">∴</span>Busier than I hoped</button>
+    </div>
+    <h2 style="margin:8px 0 0;font-size:22px;font-weight:800">Your field notebook</h2>
+    <div class="book" id="book"></div>
+    <p class="small" style="border:2px dashed #1F3D30;padding:12px 14px">Your stamps live on this phone, not on our server. We only count scans and taps.</p>
+  </div>
+</section>
+
+<svg class="grain" aria-hidden="true" width="100%" height="100%"><filter id="grain"><feTurbulence type="fractalNoise" baseFrequency=".85" numOctaves="2" stitchTiles="stitch"/><feColorMatrix values="0 0 0 0 .12  0 0 0 0 .24  0 0 0 0 .19  0 0 0 .35 0"/></filter><rect width="100%" height="100%" filter="url(#grain)"/></svg>
+<p class="visually-hidden" aria-live="polite" id="live"></p>
+</div>
+<script src="config.js"></script>
+<script src="map.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

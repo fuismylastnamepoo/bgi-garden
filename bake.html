@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BGI — bake the street map</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app"><div class="pad">
+  <h1>Bake the street map</h1>
+  <p>Run this once. It downloads the streets around the garden from OpenStreetMap and saves them as <code>streets.json</code>. Put that file in the <code>data/</code> folder of the site, and visitors load it instantly instead of asking OpenStreetMap each time.</p>
+  <button class="btn" id="bake"><span>Fetch streets</span></button>
+  <p class="small" id="status">Waiting.</p>
+  <div class="map" id="preview" style="height:420px;border:2px solid #1F3D30"></div>
+  <a class="btn ghost" id="dl" hidden download="streets.json">Download streets.json</a>
+</div></div>
+<script src="config.js"></script>
+<script src="map.js"></script>
+<script>
+  var C = window.BGI_CONFIG, M = window.BGIMap;
+  document.getElementById('bake').onclick = function () {
+    var st = document.getElementById('status');
+    st.textContent = 'Asking OpenStreetMap… (can take 10–30 s)';
+    fetch(C.overpassUrl, { method: 'POST', body: 'data=' + encodeURIComponent(M.overpassQuery(C.entrance, C.mapRadiusM + 300)) })
+      .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(function (raw) {
+        var data = M.compact(raw), json = JSON.stringify(data);
+        st.textContent = data.ways.length + ' streets, ' + Object.keys(data.nodes).length + ' points, ' + Math.round(json.length / 1024) + ' KB. Check the preview, then download.';
+        var el = document.getElementById('preview');
+        el.innerHTML = M.render(data, { mode: 'static', entrance: C.entrance, w: el.clientWidth, h: el.clientHeight });
+        var dl = document.getElementById('dl');
+        dl.href = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
+        dl.hidden = false;
+      })
+      .catch(function (e) { st.textContent = 'Failed: ' + e.message + '. Try again in a minute.'; });
+  };
+</script>
+</body>
+</html>
