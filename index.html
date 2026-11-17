@@ -25,16 +25,68 @@
       <button class="btn" id="go"><span>Show me the way</span><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12H20M14 6l6 6-6 6"/></svg></button>
       <p class="small">Asks for your location once. It never leaves this phone.</p>
     </div>
-    <button class="btn ghost" id="landmarks">I’ll find it with landmarks</button>
+    <button class="linkbtn" id="landmarks">No location? Find it by landmarks</button>
     <div class="foot mono"><span>BGI · Brooklyn Greenway</span><span id="src-label"></span></div>
+  </div>
+</section>
+
+<!-- A2 · compass finding its way -->
+<section class="screen seek" id="s-seek" hidden>
+  <div class="pad center">
+    <span class="mono">BGI · wayfinder</span>
+    <svg class="bigcompass" viewBox="0 0 300 300" role="img" aria-label="A compass searching for the garden" id="seek-compass">
+      <defs><pattern id="sDots" width="7" height="7" patternUnits="userSpaceOnUse"><circle cx="3.5" cy="3.5" r="1.4" fill="#1F3D30"/></pattern></defs>
+      <circle cx="158" cy="156" r="132" fill="#FF48B0" style="mix-blend-mode:multiply" class="seek-ink"/>
+      <circle cx="150" cy="150" r="132" fill="#00A95C"/>
+      <circle cx="160" cy="160" r="132" fill="url(#sDots)" opacity=".22"/>
+      <circle cx="150" cy="150" r="100" fill="#F4EFE4"/>
+      <g class="ticks" stroke="#1F3D30" stroke-width="2" stroke-linecap="round">
+        <path d="M150 54v12M150 234v12M54 150h12M234 150h12"/>
+        <path d="M218 82l-6 6M82 218l6-6M82 82l6 6M218 218l-6-6" opacity=".5"/>
+      </g>
+      <g font-family="DM Mono, monospace" font-size="13" fill="#1F3D30" text-anchor="middle">
+        <text x="150" y="38" fill="#F4EFE4">N</text><text x="150" y="274" fill="#F4EFE4">S</text>
+        <text x="270" y="155" fill="#F4EFE4">E</text><text x="30" y="155" fill="#F4EFE4">W</text>
+      </g>
+      <g id="seek-needle" class="needle searching">
+        <path d="M150 62 L172 150 L150 140 L128 150Z" fill="#FF48B0" style="mix-blend-mode:multiply"/>
+        <path d="M150 238 L172 150 L150 160 L128 150Z" fill="#FFE800" style="mix-blend-mode:multiply"/>
+        <path d="M150 62 L172 150 L150 238 L128 150Z" fill="none" stroke="#1F3D30" stroke-width="2" stroke-linejoin="round"/>
+      </g>
+      <circle cx="150" cy="150" r="7" fill="#1F3D30"/>
+    </svg>
+    <p class="seek-line" id="seek-line" aria-live="polite">Finding you…</p>
+    <p class="small">Your location stays on this phone.</p>
+  </div>
+</section>
+
+<!-- A3 · big arrow -->
+<section class="screen" id="s-arrow" hidden>
+  <div class="pad">
+    <div style="display:flex;justify-content:space-between;align-items:center"><button class="back" data-go="landing">← BGI</button><span class="mono" id="arrow-mode">north is up</span></div>
+    <div class="arrowwrap">
+      <svg viewBox="0 0 300 300" class="bigarrow" role="img" aria-label="Arrow pointing toward the garden" id="bigarrow">
+        <g id="arrow-rot">
+          <path d="M150 18 L250 150 L190 150 L190 282 L110 282 L110 150 L50 150Z" fill="#FFE800" style="mix-blend-mode:multiply" transform="translate(9 7)"/>
+          <path d="M150 18 L250 150 L190 150 L190 282 L110 282 L110 150 L50 150Z" fill="#FF48B0" style="mix-blend-mode:multiply"/>
+          <path d="M150 18 L250 150 L190 150 L190 282 L110 282 L110 150 L50 150Z" fill="none" stroke="#1F3D30" stroke-width="3" stroke-linejoin="round"/>
+          <path d="M150 64 V 250" stroke="#F4EFE4" stroke-width="3" stroke-dasharray="2 10" stroke-linecap="round"/>
+        </g>
+      </svg>
+    </div>
+    <h1 id="arrow-h">That way.</h1>
+    <p id="arrow-sub"></p>
+    <button class="btn" id="draw-map"><span>Draw my map</span><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17c4-1 4-9 9-9s5 8 9 7"/><circle cx="3" cy="17" r="1.5"/><circle cx="21" cy="15" r="1.5"/></svg></button>
+    <div class="altlinks"><a id="arrow-gmaps" href="#">Open in Google Maps</a><button class="linkbtn" id="arrow-landmarks">Landmark view</button></div>
   </div>
 </section>
 
 <!-- B · route -->
 <section class="screen" id="s-route" hidden>
   <div class="map h-route" id="m-route"></div>
+  <div class="ticket mono" id="ticket" aria-hidden="true"></div>
   <div class="topbar">
-    <button class="back" data-go="landing">← BGI</button>
+    <button class="back" data-go="arrow">← arrow</button>
     <button class="iconbtn" id="recenter" aria-label="Recenter on me"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="5"/><path d="M11 1v3M11 18v3M1 11h3M18 11h3"/></svg></button>
   </div>
   <div class="sheet">
@@ -45,7 +97,7 @@
     </div>
     <ol class="steps" id="steps"></ol>
     <p class="note">Map apps often miss this entrance. Turn onto Williamsburg St West from Kent Ave.</p>
-    <a class="small" id="ext-walk" href="#">Prefer turn-by-turn? Open in your maps app</a>
+    <div class="altlinks"><a id="ext-walk" href="#">Open in Google Maps</a><button class="linkbtn" id="route-landmarks">Landmark view</button></div>
     <div class="foot mono"><span id="gps-state">updates as you walk</span></div>
   </div>
 </section>
@@ -95,7 +147,7 @@
 <!-- E · landmarks (no location) -->
 <section class="screen" id="s-noloc" hidden>
   <div class="map h-hero" id="m-noloc"></div>
-  <div class="topbar"><button class="back" data-go="landing">← BGI</button></div>
+  <div class="topbar"><button class="back" data-go="prev">← back</button></div>
   <div class="pad">
     <h1>Find it by landmarks.</h1>
     <p class="small" id="noloc-why" hidden></p>

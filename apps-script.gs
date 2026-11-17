@@ -10,7 +10,7 @@
  * Each row: time, event, src (which card batch), detail.
  * The site never sends coordinates, names or device IDs.
  */
-var ALLOWED = ['scan', 'location', 'route_shown', 'opened_maps', 'near_gate', 'gate_scan', 'visit', 'rating', 'remind_me'];
+var ALLOWED = ['scan', 'location', 'route_shown', 'opened_maps', 'landmarks_view', 'near_gate', 'gate_scan', 'visit', 'rating', 'remind_me'];
 
 function doPost(e) {
   try {

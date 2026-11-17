@@ -235,7 +235,7 @@
     function line(cs) { return cs.map(function (c, i) { var p = proj(c[0], c[1]); return (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1); }).join(' '); }
 
     var out = [];
-    out.push('<svg xmlns="http://www.w3.org/2000/svg" viewBox="' + [vx, vy, spanW, spanH].map(function (n) { return n.toFixed(1); }).join(' ') + '" width="' + W + '" height="' + H + '" role="img" aria-label="' + esc(opts.alt || 'Map to the garden') + '">');
+    out.push('<svg xmlns="http://www.w3.org/2000/svg"' + (opts.animate ? ' class="anim"' : '') + ' viewBox="' + [vx, vy, spanW, spanH].map(function (n) { return n.toFixed(1); }).join(' ') + '" width="' + W + '" height="' + H + '" role="img" aria-label="' + esc(opts.alt || 'Map to the garden') + '">');
     out.push('<defs><pattern id="mDots" width="' + (8 * u) + '" height="' + (8 * u) + '" patternUnits="userSpaceOnUse"><circle cx="' + (4 * u) + '" cy="' + (4 * u) + '" r="' + (1.3 * u) + '" fill="#00A95C"/></pattern>' +
       '<pattern id="mShade" width="' + (5 * u) + '" height="' + (5 * u) + '" patternUnits="userSpaceOnUse"><circle cx="' + (2.5 * u) + '" cy="' + (2.5 * u) + '" r="' + (1.1 * u) + '" fill="#1F3D30"/></pattern></defs>');
     out.push('<rect x="' + vx + '" y="' + vy + '" width="' + spanW + '" height="' + spanH + '" fill="#F4EFE4"/>');
@@ -256,37 +256,41 @@
       streets.push('<path d="' + d + '" stroke="' + col + '" stroke-width="' + (wpx * u * 2.2) + '" style="mix-blend-mode:multiply"/>');
       if (wpx >= 5) casing.push('<path d="' + d + '" stroke="#1F3D30" stroke-width="' + (0.8 * u) + '" opacity="0.6"/>');
     });
-    out.push('<g fill="none" stroke-linecap="round" stroke-linejoin="round">' + streets.join('') + casing.join('') + '</g>');
+    out.push('<g class="m-streets" fill="none" stroke-linecap="round" stroke-linejoin="round">' + streets.join('') + casing.join('') + '</g>');
 
     if (opts.plan) {
       var rc = opts.plan.route.nodes.map(function (id) { return data.nodes[id]; });
       if (opts.you) rc.unshift([opts.you.lat, opts.you.lon]);
       var rd = line(rc);
-      out.push('<path d="' + rd + '" fill="none" stroke="#FF48B0" stroke-width="' + (9 * u) + '" stroke-linecap="round" stroke-linejoin="round" style="mix-blend-mode:multiply"/>');
-      out.push('<path d="' + rd + '" fill="none" stroke="#1F3D30" stroke-width="' + (1.6 * u) + '" stroke-dasharray="' + (3 * u) + ' ' + (5 * u) + '" stroke-linecap="round" transform="translate(' + (3 * u) + ' ' + (-2 * u) + ')"/>');
-      // street names along the route
+      // pathLength=1 lets CSS draw the route like a pen stroke (see .anim .m-route)
+      out.push('<path class="m-route" pathLength="1" d="' + rd + '" fill="none" stroke="#FF48B0" stroke-width="' + (9 * u) + '" stroke-linecap="round" stroke-linejoin="round" style="mix-blend-mode:multiply"/>');
+      out.push('<path class="m-route2" d="' + rd + '" fill="none" stroke="#1F3D30" stroke-width="' + (1.6 * u) + '" stroke-dasharray="' + (3 * u) + ' ' + (5 * u) + '" stroke-linecap="round" transform="translate(' + (3 * u) + ' ' + (-2 * u) + ')"/>');
+      // numbered turns pop in as the pen passes them
+      var nAll = opts.plan.route.nodes.length;
       opts.plan.steps.forEach(function (s, i) {
         var c = data.nodes[s.at]; if (!c) return;
         var p = proj(c[0], c[1]);
-        out.push('<circle cx="' + p[0] + '" cy="' + p[1] + '" r="' + (11 * u) + '" fill="#F4EFE4" stroke="#1F3D30" stroke-width="' + (2 * u) + '"/>');
-        out.push('<text x="' + p[0] + '" y="' + (p[1] + 4 * u) + '" text-anchor="middle" font-family="DM Mono, monospace" font-size="' + (11 * u) + '" fill="#1F3D30">' + (i + 1) + '</text>');
+        var at = Math.max(0, opts.plan.route.nodes.indexOf(s.at)) / Math.max(1, nAll - 1);
+        out.push('<g class="m-pop" style="animation-delay:' + (0.7 + 2.4 * at).toFixed(2) + 's">' +
+          '<circle cx="' + p[0] + '" cy="' + p[1] + '" r="' + (11 * u) + '" fill="#F4EFE4" stroke="#1F3D30" stroke-width="' + (2 * u) + '"/>' +
+          '<text x="' + p[0] + '" y="' + (p[1] + 4 * u) + '" text-anchor="middle" font-family="DM Mono, monospace" font-size="' + (11 * u) + '" fill="#1F3D30">' + (i + 1) + '</text></g>');
       });
     }
 
     // entrance pin
     var s = u * 1.1;
-    out.push('<g transform="translate(0 0) scale(' + s + ')">' +
+    out.push('<g class="m-pin"><g transform="translate(0 0) scale(' + s + ')">' +
       (opts.mode === 'close' ? '<circle cx="0" cy="0" r="12" fill="none" stroke="#FF48B0" stroke-width="3"><animate attributeName="r" values="10;38" dur="1.8s" repeatCount="indefinite"/><animate attributeName="opacity" values="1;0" dur="1.8s" repeatCount="indefinite"/></circle>' : '') +
       '<path d="M0 -42 C 14 -42, 22 -30, 14 -18 L 0 0 L -14 -18 C -22 -30, -14 -42, 0 -42 Z" fill="#00A95C" style="mix-blend-mode:multiply"/>' +
       '<path d="M3 -39 C 17 -39, 25 -27, 17 -15 L 3 3 L -11 -15 C -19 -27, -11 -39, 3 -39 Z" fill="none" stroke="#1F3D30" stroke-width="2"/>' +
       '<path d="M0 -36 C 7 -32, 7 -24, 0 -20 C -7 -24, -7 -32, 0 -36 Z" fill="#F4EFE4"/>' +
-      '<rect x="20" y="-40" width="40" height="18" fill="#F4EFE4"/><text x="24" y="-26" font-family="Bricolage Grotesque, sans-serif" font-weight="800" font-size="14" fill="#1F3D30">BGI</text></g>');
+      '<rect x="20" y="-40" width="40" height="18" fill="#F4EFE4"/><text x="24" y="-26" font-family="Bricolage Grotesque, sans-serif" font-weight="800" font-size="14" fill="#1F3D30">BGI</text></g></g>');
 
     if (opts.you) {
       var y = proj(opts.you.lat, opts.you.lon);
-      out.push('<circle cx="' + y[0] + '" cy="' + y[1] + '" r="' + (18 * u) + '" fill="#FF48B0" opacity="0.35" style="mix-blend-mode:multiply"/>' +
+      out.push('<g class="m-you"><circle cx="' + y[0] + '" cy="' + y[1] + '" r="' + (18 * u) + '" fill="#FF48B0" opacity="0.35" style="mix-blend-mode:multiply"/>' +
         '<circle cx="' + y[0] + '" cy="' + y[1] + '" r="' + (9 * u) + '" fill="#1F3D30"/>' +
-        '<circle cx="' + y[0] + '" cy="' + y[1] + '" r="' + (3.5 * u) + '" fill="#F4EFE4"/>');
+        '<circle cx="' + y[0] + '" cy="' + y[1] + '" r="' + (3.5 * u) + '" fill="#F4EFE4"/></g>');
     }
     out.push('</svg>');
     return out.join('');

@@ -30,9 +30,10 @@
   }
 
   // ---------- screens ----------
-  var current = null;
+  var current = null, previous = null;
   function show(name) {
-    ['landing', 'route', 'arrive', 'far', 'noloc', 'gate'].forEach(function (n) { $('s-' + n).hidden = n !== name; });
+    ['landing', 'seek', 'arrow', 'route', 'arrive', 'far', 'noloc', 'gate'].forEach(function (n) { $('s-' + n).hidden = n !== name; });
+    if (current !== name) previous = current;
     current = name; window.scrollTo(0, 0);
   }
   function say(t) { $('live').textContent = t; }
@@ -98,24 +99,115 @@
   var you = null, plan = null, planAt = { t: 0, pos: null }, watchId = null, arrived = false;
   function toLL(pos) { return { lat: pos.coords.latitude, lon: pos.coords.longitude }; }
 
+  // ---------- compass heading (which way the phone faces) ----------
+  // iOS only lets a page read the compass after a tap, so this runs inside the button's click.
+  var heading = null, headingListeners = [];
+  function startHeading() {
+    function onOrient(e) {
+      var h = null;
+      if (typeof e.webkitCompassHeading === 'number') h = e.webkitCompassHeading;          // iOS
+      else if (e.absolute && typeof e.alpha === 'number') h = (360 - e.alpha) % 360;        // Android
+      if (h === null) return;
+      heading = heading === null ? h : heading + (((h - heading + 540) % 360) - 180) * 0.25; // smooth, wrap-safe
+      headingListeners.forEach(function (f) { f(); });
+    }
+    function listen() {
+      window.addEventListener('deviceorientationabsolute', onOrient);
+      window.addEventListener('deviceorientation', onOrient);
+    }
+    if (startHeading.on) return;
+    startHeading.on = true;
+    try {
+      // Listen everywhere (Android sends events without asking); iOS also needs the permission prompt.
+      if (window.DeviceOrientationEvent) listen();
+      if (window.DeviceOrientationEvent && typeof DeviceOrientationEvent.requestPermission === 'function') {
+        DeviceOrientationEvent.requestPermission().catch(function () {});
+      }
+    } catch (e) { /* no compass: the arrow just shows north-up */ }
+  }
+
+  // ---------- A2 · the compass finding its way ----------
+  var SEEK_LINES = ['Finding you…', 'Sniffing the air for moss…', 'Checking which way the trees lean…', 'Asking the pigeons…', 'Almost…'];
+  var seekTimer = null;
+  function startSeek() {
+    show('seek');
+    var needle = $('seek-needle'), i = 0;
+    needle.classList.remove('locked'); needle.classList.add('searching'); needle.style.transform = '';
+    $('seek-compass').classList.remove('found');
+    $('seek-line').textContent = SEEK_LINES[0];
+    clearInterval(seekTimer);
+    seekTimer = setInterval(function () { i = Math.min(i + 1, SEEK_LINES.length - 1); $('seek-line').textContent = SEEK_LINES[i]; }, 1100);
+  }
+  function lockSeek(deg, trueBearing, then) {
+    clearInterval(seekTimer);
+    var needle = $('seek-needle');
+    // freeze the spin where it is, then swing (with a little overshoot) to the garden
+    var cur = getComputedStyle(needle).transform, start = 0;
+    if (cur && cur !== 'none') { var m = cur.match(/matrix\(([^,]+),\s*([^,]+)/); if (m) start = Math.atan2(+m[2], +m[1]) * 180 / Math.PI; }
+    needle.classList.remove('searching');
+    needle.style.transform = 'rotate(' + start + 'deg)';
+    var target = start + (((deg - start) % 360) + 360) % 360 + 360; // one more spin, then land
+    void needle.getBoundingClientRect();
+    needle.classList.add('locked');
+    needle.style.transform = 'rotate(' + target + 'deg)';
+    $('seek-line').textContent = 'Got it. The garden is ' + M.cardinal(trueBearing) + '.';
+    $('seek-compass').classList.add('found');
+    say($('seek-line').textContent);
+    setTimeout(then, 1500);
+  }
+
   function askLocation() {
     if (!navigator.geolocation) { log('location', { result: 'unsupported' }); return showNoloc('unsupported'); }
-    say('Finding you…');
-    $('go').disabled = true;
+    startSeek();
+    loadStreets(); // start drawing materials while we look
+    var t0 = Date.now(), MIN_SEEK = 2600;
     navigator.geolocation.getCurrentPosition(function (pos) {
-      $('go').disabled = false;
       you = toLL(pos);
       var d = M.haversine(you, ENT);
-      if (d > C.mapRadiusM) { log('location', { result: 'far' }); return showFar(); }
-      log('location', { result: 'yes' });
-      if (d <= C.arriveRadiusM) showArrive(); else showRoute();
-      startWatch();
+      var b = M.bearing(you, ENT);
+      var faceDeg = heading === null ? b : b - heading;
+      setTimeout(function () {
+        lockSeek(faceDeg, b, function () {
+          if (d > C.mapRadiusM) { log('location', { result: 'far' }); return showFar(); }
+          log('location', { result: 'yes' });
+          if (d <= C.arriveRadiusM) showArrive(); else showArrow();
+          startWatch();
+        });
+      }, Math.max(0, MIN_SEEK - (Date.now() - t0)));
     }, function (err) {
-      $('go').disabled = false;
+      clearInterval(seekTimer);
       log('location', { result: err.code === 1 ? 'denied' : 'error' });
       showNoloc(err.code === 1 ? 'denied' : 'error');
     }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 });
   }
+
+  // ---------- A3 · the big arrow ----------
+  function arrowDeg() {
+    var b = M.bearing(you, ENT);
+    return heading === null ? b : b - heading;
+  }
+  function paintArrow() {
+    if (current !== 'arrow' || !you) return;
+    var deg = arrowDeg();
+    $('arrow-rot').style.transform = 'rotate(' + deg.toFixed(1) + 'deg)';
+    $('arrow-mode').textContent = heading === null ? 'north is up' : 'live compass';
+    $('bigarrow').setAttribute('aria-label', 'Arrow pointing ' + M.cardinal(M.bearing(you, ENT)) + ' toward the garden');
+  }
+  headingListeners.push(paintArrow);
+  function showArrow() {
+    show('arrow');
+    var d = M.haversine(you, ENT), b = M.bearing(you, ENT);
+    var mins = Math.max(1, Math.round(d * 1.3 / C.walkSpeedMps / 60));
+    $('arrow-h').textContent = (d < 400 ? Math.round(d) + ' m ' : (d / 1609).toFixed(1) + ' mi ') + M.cardinal(b) + '.';
+    $('arrow-sub').textContent = 'About ' + mins + ' min on foot. ' + (heading === null ? 'North is up on this arrow.' : 'Turn until the arrow points straight up, then walk.');
+    var svg = $('bigarrow');
+    svg.style.setProperty('--rot', arrowDeg().toFixed(0) + 'deg');
+    svg.classList.remove('enter'); void svg.getBoundingClientRect(); svg.classList.add('enter');
+    setTimeout(function () { svg.classList.remove('enter'); paintArrow(); }, 750);
+    paintArrow();
+    $('arrow-gmaps').href = gmaps('walking');
+  }
+  function gmaps(mode) { return 'https://www.google.com/maps/dir/?api=1&destination=' + ENT.lat + ',' + ENT.lon + '&travelmode=' + mode; }
 
   function startWatch() {
     if (watchId !== null || !navigator.geolocation) return;
@@ -125,9 +217,11 @@
       var d = M.haversine(you, ENT);
       if (d <= C.arriveRadiusM && current === 'route') return showArrive();
       if (current === 'arrive') { $('arrive-dist').textContent = '~' + Math.round(d) + ' m to the entrance'; }
+      if (current === 'arrow') return paintArrow();
+      if (current === 'far') return paintFar();
       if (current !== 'route') return;
       var now = Date.now();
-      if (now - lastDraw < 2000) return;
+      if (now - lastDraw < 2000 || now < drawingUntil) return; // let the pen finish
       lastDraw = now;
       var moved = planAt.pos ? M.haversine(planAt.pos, you) : Infinity;
       if (now - planAt.t > 15000 || moved > 30) computePlan();
@@ -142,23 +236,34 @@
   }
 
   // ---------- B · route ----------
-  function showRoute() {
+  var mapNo = null, drawingUntil = 0;
+  function showRoute(animate) {
     show('route');
     var el = $('m-route');
     drawLoading(el, { mode: 'route', you: you });
-    $('ext-walk').href = 'https://www.google.com/maps/dir/?api=1&destination=' + ENT.lat + ',' + ENT.lon + '&travelmode=walking';
+    $('ext-walk').href = gmaps('walking');
     loadStreets().then(function (data) {
       if (data && !graph) graph = M.buildGraph(data, ENT);
       computePlan();
-      paintRoute();
+      paintRoute(animate);
       log('route_shown', { ok: !!plan }, true);
     });
   }
 
-  function paintRoute() {
+  function paintRoute(animate) {
     var el = $('m-route');
     loadStreets().then(function (data) {
-      draw(el, { mode: 'route', you: you, plan: plan, topPx: 90, alt: 'Walking route from you to the garden entrance' }, data);
+      if (animate) drawingUntil = Date.now() + 4200;
+      draw(el, { mode: 'route', you: you, plan: plan, topPx: 90, animate: !!animate, alt: 'Walking route from you to the garden entrance' }, data);
+      var tk = $('ticket');
+      if (animate || !tk.textContent) {
+        var now = new Date();
+        mapNo = mapNo || String(1000 + Math.floor(Math.random() * 9000));
+        var hh = now.getHours() % 12 || 12, mm = String(now.getMinutes()).padStart(2, '0');
+        tk.innerHTML = 'Map Nº ' + mapNo + '<br>drawn for you · ' + hh + ':' + mm + (now.getHours() < 12 ? 'am' : 'pm');
+        tk.classList.remove('anim'); void tk.getBoundingClientRect();
+        if (animate) tk.classList.add('anim');
+      }
       var meters = plan ? plan.meters : M.haversine(you, ENT) * 1.3;
       var mins = Math.max(1, Math.round(meters / C.walkSpeedMps / 60));
       $('eta-min').textContent = mins + ' min';
@@ -191,10 +296,15 @@
   }
 
   // ---------- D · far ----------
+  function paintFar() {
+    if (current !== 'far' || !you) return;
+    $('needle').setAttribute('transform', 'rotate(' + arrowDeg().toFixed(0) + ' 150 150)');
+  }
+  headingListeners.push(paintFar);
   function showFar() {
     show('far');
     var d = M.haversine(you, ENT), b = M.bearing(you, ENT);
-    $('needle').setAttribute('transform', 'rotate(' + b.toFixed(0) + ' 150 150)');
+    paintFar();
     $('compass').setAttribute('aria-label', 'Arrow pointing ' + M.cardinal(b) + ' toward the garden');
     $('far-h').textContent = (d / 1609).toFixed(1) + ' mi ' + M.cardinal(b) + '.';
     var ul = $('transit'); ul.innerHTML = '';
@@ -234,6 +344,7 @@
   // ---------- E · no location ----------
   function showNoloc(reason) {
     show('noloc');
+    $('retry').hidden = !!you; // already located: this is just the landmark view
     var why = $('noloc-why');
     why.hidden = !reason;
     why.textContent = reason === 'denied' ? 'Location is off for this page. No problem.' : reason ? 'Couldn’t find you just now.' : '';
@@ -313,9 +424,14 @@
     loadStreets().then(function (data) { draw(el, { mode: 'static', alt: 'Map of the streets around the garden entrance' }, data); });
   }
 
-  $('go').onclick = askLocation;
-  $('retry').onclick = askLocation;
+  function go() { startHeading(); askLocation(); }
+  $('go').onclick = go;
+  $('retry').onclick = go;
   $('landmarks').onclick = function () { log('location', { result: 'skipped' }); showNoloc(null); };
+  $('draw-map').onclick = function () { showRoute(true); };
+  $('arrow-landmarks').onclick = function () { log('landmarks_view'); showNoloc(null); };
+  $('route-landmarks').onclick = function () { log('landmarks_view'); showNoloc(null); };
+  $('arrow-gmaps').addEventListener('click', function () { log('opened_maps', { mode: 'walk', from: 'arrow' }); });
   $('recenter').onclick = function () { computePlan(); paintRoute(); };
   $('remind').onclick = remindMe;
   $('ext-walk').addEventListener('click', function () { log('opened_maps', { mode: 'walk' }); });
@@ -325,7 +441,14 @@
     (navigator.clipboard ? navigator.clipboard.writeText(txt) : Promise.reject()).then(function () { b.textContent = 'Copied'; b.classList.add('done'); }, function () { b.textContent = 'Copy failed'; });
   };
   Array.prototype.forEach.call(document.querySelectorAll('[data-go]'), function (b) {
-    b.onclick = function () { var g = b.dataset.go; if (g === 'route' && you) showRoute(); else landing(); };
+    b.onclick = function () {
+      var g = b.dataset.go;
+      if (g === 'prev') g = previous || 'landing';
+      if (g === 'route' && you) return showRoute(false);
+      if (g === 'arrow' && you) return showArrow();
+      if (g === 'far' && you) return showFar();
+      landing();
+    };
   });
   var resizeT;
   window.addEventListener('resize', function () {
