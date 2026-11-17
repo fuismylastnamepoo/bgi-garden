@@ -41,7 +41,7 @@
   function compact(raw) {
     var coords = {};
     raw.elements.forEach(function (el) {
-      if (el.type === 'node') coords[el.id] = [+el.lat.toFixed(6), +el.lon.toFixed(6)];
+      if (el.type === 'node') coords[el.id] = [+el.lat.toFixed(5), +el.lon.toFixed(5)];
     });
     var used = {}, ways = [], areas = [];
     raw.elements.forEach(function (el) {
@@ -49,6 +49,9 @@
       var t = el.tags || {};
       var ids = el.nodes.filter(function (id) { return coords[id]; });
       if (ids.length < 2) return;
+      // NYC maps every sidewalk and crosswalk as its own path; the street itself is enough
+      if (t.footway === 'sidewalk' || t.footway === 'crossing' || t.footway === 'traffic_island' ||
+          t.highway === 'corridor' || t.highway === 'elevator' || t.highway === 'platform') return;
       if (t.highway) {
         ways.push({ n: ids, name: t.name || '', hw: t.highway, w: walkable(t) ? 1 : 0 });
         ids.forEach(function (id) { used[id] = 1; });
@@ -189,8 +192,17 @@
     var target = nearestNode(g, entrance.lat, entrance.lon, function (id) {
       return (g.adj[id] || []).some(function (e) { return /williamsburg st(reet)? w/i.test(e.name); });
     }) || nearestNode(g, entrance.lat, entrance.lon);
-    var start = nearestNode(g, you.lat, you.lon);
-    if (!target || !start) return null;
+    if (!target) return null;
+    // only start from streets that connect to the entrance (skips cut-off campus paths)
+    if (!g.reach || g.reachFrom !== target.id) {
+      g.reach = {}; g.reachFrom = target.id;
+      var stack = [target.id]; g.reach[target.id] = 1;
+      while (stack.length) {
+        (g.adj[stack.pop()] || []).forEach(function (e) { if (!g.reach[e.to]) { g.reach[e.to] = 1; stack.push(e.to); } });
+      }
+    }
+    var start = nearestNode(g, you.lat, you.lon, function (id) { return g.reach[id]; });
+    if (!start) return null;
     var r = dijkstra(g, start.id, target.id);
     if (!r) return null;
     var meters = r.edges.reduce(function (s, e) { return s + e.d; }, 0) + start.d;
