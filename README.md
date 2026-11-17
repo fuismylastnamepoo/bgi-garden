@@ -11,7 +11,8 @@ No app, no accounts, no server of our own. Routing runs on the visitor's phone o
 | `index.html`, `style.css` | the screens |
 | `app.js` | screens, location, near-the-entrance check, stamps, logging |
 | `map.js` | streets → walking graph → shortest route → riso SVG |
-| `config.js` | **everything you'd change**: entrance pin, hours, log URL, seasons, transit |
+| `config.js` | **everything you'd change**: entrance pin, hours, log URL, seasons, transit, map style |
+| `tune.js` | the `?tune=1` map style panel |
 | `bake.html` | one-time tool that saves the streets as `data/streets.json` |
 | `apps-script.gs` | Google Sheet logger (paste into Apps Script) |
 | `make_qr.py`, `qr/` | QR codes for cards (`?src=…`) and the entrance (`?at=gate`) |
@@ -23,6 +24,14 @@ No app, no accounts, no server of our own. Routing runs on the visitor's phone o
 3. **Logging.** New Google Sheet → Extensions → Apps Script → paste `apps-script.gs` → Deploy → Web app (Execute as *Me*, access *Anyone*). Paste the URL into `config.js` → `logUrl`. Run `makeFunnel` once for a per-card summary tab.
 4. **QR codes.** `python make_qr.py https://<…>/bgi-garden/ pratt-library cafe-kent …` — one code per handout spot, plus `qr/gate.svg` for the entrance sign. The included `qr/` files assume `fuismylastnamepoo.github.io/bgi-garden`; regenerate if your URL differs.
 5. **Check before printing.** Confirm hours with BGI (`config.js` → `hours`). Walk one route with your phone and see that the steps match the street.
+
+## When you change a file
+
+In `index.html`, bump the `?v=…` tag on the `style.css`, `config.js`, `map.js` and `app.js` links (e.g. `?v=2026-11-17a` → `?v=2026-11-20a`). Phones then load your new files right away instead of a copy cached for up to 10 minutes.
+
+## Change how the map looks
+
+Open `…/bgi-garden/?tune=1` on a laptop. Sliders and color pickers restyle the map live (route color, thickness, drawing time, pin pulse, each map layer's color and opacity). Press **Copy settings for config.js** and paste the block over `mapStyle` in `config.js`, then bump the `?v=` tag.
 
 ## Try it
 

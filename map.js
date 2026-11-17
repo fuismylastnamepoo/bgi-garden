@@ -234,70 +234,112 @@
     function inView(c) { var p = proj(c[0], c[1]); return p[0] > vx - 200 && p[0] < vx + spanW + 200 && p[1] > vy - 200 && p[1] < vy + spanH + 200; }
     function line(cs) { return cs.map(function (c, i) { var p = proj(c[0], c[1]); return (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1); }).join(' '); }
 
-    var out = [];
-    out.push('<svg xmlns="http://www.w3.org/2000/svg"' + (opts.animate ? ' class="anim"' : '') + ' viewBox="' + [vx, vy, spanW, spanH].map(function (n) { return n.toFixed(1); }).join(' ') + '" width="' + W + '" height="' + H + '" role="img" aria-label="' + esc(opts.alt || 'Map to the garden') + '">');
-    out.push('<defs><pattern id="mDots" width="' + (8 * u) + '" height="' + (8 * u) + '" patternUnits="userSpaceOnUse"><circle cx="' + (4 * u) + '" cy="' + (4 * u) + '" r="' + (1.3 * u) + '" fill="#00A95C"/></pattern>' +
-      '<pattern id="mShade" width="' + (5 * u) + '" height="' + (5 * u) + '" patternUnits="userSpaceOnUse"><circle cx="' + (2.5 * u) + '" cy="' + (2.5 * u) + '" r="' + (1.1 * u) + '" fill="#1F3D30"/></pattern></defs>');
-    out.push('<rect x="' + vx + '" y="' + vy + '" width="' + spanW + '" height="' + spanH + '" fill="#F4EFE4"/>');
-    out.push('<rect x="' + vx + '" y="' + vy + '" width="' + spanW + '" height="' + spanH + '" fill="url(#mDots)" opacity="0.35"/>');
+    // ---- style: config.js → mapStyle, falling back to these calm defaults ----
+    var S = mergeStyle(opts.style);
+    var drawS = +S.route.drawSeconds || 2.4;
 
+    var out = [];
+    out.push('<svg xmlns="http://www.w3.org/2000/svg"' + (opts.animate ? ' class="anim"' : '') + ' style="--draw:' + drawS + 's" viewBox="' + [vx, vy, spanW, spanH].map(function (n) { return n.toFixed(1); }).join(' ') + '" width="' + W + '" height="' + H + '" role="img" aria-label="' + esc(opts.alt || 'Map to the garden') + '">');
+    out.push('<defs><pattern id="mDots" width="' + (8 * u) + '" height="' + (8 * u) + '" patternUnits="userSpaceOnUse"><circle cx="' + (4 * u) + '" cy="' + (4 * u) + '" r="' + (1.3 * u) + '" fill="' + S.dots.color + '"/></pattern></defs>');
+    out.push('<rect x="' + vx + '" y="' + vy + '" width="' + spanW + '" height="' + spanH + '" fill="' + S.paper + '"/>');
+    if (+S.dots.opacity > 0) out.push('<rect x="' + vx + '" y="' + vy + '" width="' + spanW + '" height="' + spanH + '" fill="url(#mDots)" opacity="' + S.dots.opacity + '"/>');
+
+    var parks = [], water = [];
     (data.areas || []).forEach(function (a) {
       if (!a.c.some(inView)) return;
-      var fill = a.k === 'water' ? '#0078BF' : '#00A95C';
-      out.push('<path d="' + line(a.c) + ' Z" fill="' + fill + '" opacity="' + (a.k === 'water' ? 0.55 : 0.75) + '" style="mix-blend-mode:multiply"/>');
+      (a.k === 'water' ? water : parks).push('<path d="' + line(a.c) + ' Z"/>');
     });
+    if (+S.water.opacity > 0) out.push('<g fill="' + S.water.color + '" opacity="' + S.water.opacity + '" style="mix-blend-mode:multiply">' + water.join('') + '</g>');
+    if (+S.parks.opacity > 0) out.push('<g fill="' + S.parks.color + '" opacity="' + S.parks.opacity + '" style="mix-blend-mode:multiply">' + parks.join('') + '</g>');
 
-    var streets = [], casing = [];
+    var minor = [], big = [], green = [], casing = [], sw = +S.streets.width || 1;
     (data.ways || []).forEach(function (w) {
       var cs = w.n.map(function (id) { return data.nodes[id]; }).filter(Boolean);
       if (cs.length < 2 || !cs.some(inView)) return;
-      var wpx = WIDTH_PX[w.hw] || 2, d = line(cs);
-      var col = (w.hw === 'motorway' || w.hw === 'trunk') ? '#FF6C2F' : (w.hw === 'cycleway' ? '#00A95C' : '#FFE800');
-      streets.push('<path d="' + d + '" stroke="' + col + '" stroke-width="' + (wpx * u * 2.2) + '" style="mix-blend-mode:multiply"/>');
-      if (wpx >= 5) casing.push('<path d="' + d + '" stroke="#1F3D30" stroke-width="' + (0.8 * u) + '" opacity="0.6"/>');
+      var wpx = (WIDTH_PX[w.hw] || 2) * sw, d = line(cs);
+      var p = '<path d="' + d + '" stroke-width="' + (wpx * u * 2.2).toFixed(2) + '"/>';
+      if (/^(motorway|trunk)/.test(w.hw)) big.push(p);
+      else if (w.hw === 'cycleway') green.push(p);
+      else minor.push(p);
+      if (wpx >= 5 * sw && !/^(motorway|trunk)/.test(w.hw)) casing.push('<path d="' + d + '" stroke-width="' + (0.8 * u) + '"/>');
     });
-    out.push('<g class="m-streets" fill="none" stroke-linecap="round" stroke-linejoin="round">' + streets.join('') + casing.join('') + '</g>');
+    out.push('<g class="m-streets" fill="none" stroke-linecap="round" stroke-linejoin="round">' +
+      (+S.streets.opacity > 0 ? '<g stroke="' + S.streets.color + '" opacity="' + S.streets.opacity + '" style="mix-blend-mode:multiply">' + minor.join('') + '</g>' : '') +
+      (+S.bigRoads.opacity > 0 ? '<g stroke="' + S.bigRoads.color + '" opacity="' + S.bigRoads.opacity + '" style="mix-blend-mode:multiply">' + big.join('') + '</g>' : '') +
+      (+S.greenway.opacity > 0 ? '<g stroke="' + S.greenway.color + '" opacity="' + S.greenway.opacity + '" style="mix-blend-mode:multiply">' + green.join('') + '</g>' : '') +
+      (+S.outlines > 0 ? '<g stroke="#1F3D30" opacity="' + S.outlines + '">' + casing.join('') + '</g>' : '') +
+      '</g>');
 
     if (opts.plan) {
       var rc = opts.plan.route.nodes.map(function (id) { return data.nodes[id]; });
       if (opts.you) rc.unshift([opts.you.lat, opts.you.lon]);
       var rd = line(rc);
       // pathLength=1 lets CSS draw the route like a pen stroke (see .anim .m-route)
-      out.push('<path class="m-route" pathLength="1" d="' + rd + '" fill="none" stroke="#FF48B0" stroke-width="' + (9 * u) + '" stroke-linecap="round" stroke-linejoin="round" style="mix-blend-mode:multiply"/>');
-      out.push('<path class="m-route2" d="' + rd + '" fill="none" stroke="#1F3D30" stroke-width="' + (1.6 * u) + '" stroke-dasharray="' + (3 * u) + ' ' + (5 * u) + '" stroke-linecap="round" transform="translate(' + (3 * u) + ' ' + (-2 * u) + ')"/>');
+      out.push('<path class="m-route" pathLength="1" d="' + rd + '" fill="none" stroke="' + S.route.color + '" opacity="' + S.route.opacity + '" stroke-width="' + (S.route.width * u) + '" stroke-linecap="round" stroke-linejoin="round" style="mix-blend-mode:multiply"/>');
+      if (S.route.dashes) out.push('<path class="m-route2" d="' + rd + '" fill="none" stroke="#1F3D30" stroke-width="' + (1.6 * u) + '" stroke-dasharray="' + (3 * u) + ' ' + (5 * u) + '" stroke-linecap="round" transform="translate(' + (3 * u) + ' ' + (-2 * u) + ')"/>');
       // numbered turns pop in as the pen passes them
       var nAll = opts.plan.route.nodes.length;
-      opts.plan.steps.forEach(function (s, i) {
-        var c = data.nodes[s.at]; if (!c) return;
+      opts.plan.steps.forEach(function (st, i) {
+        var c = data.nodes[st.at]; if (!c) return;
         var p = proj(c[0], c[1]);
-        var at = Math.max(0, opts.plan.route.nodes.indexOf(s.at)) / Math.max(1, nAll - 1);
-        out.push('<g class="m-pop" style="animation-delay:' + (0.7 + 2.4 * at).toFixed(2) + 's">' +
-          '<circle cx="' + p[0] + '" cy="' + p[1] + '" r="' + (11 * u) + '" fill="#F4EFE4" stroke="#1F3D30" stroke-width="' + (2 * u) + '"/>' +
+        var at = Math.max(0, opts.plan.route.nodes.indexOf(st.at)) / Math.max(1, nAll - 1);
+        out.push('<g class="m-pop" style="animation-delay:' + (0.7 + drawS * at).toFixed(2) + 's">' +
+          '<circle cx="' + p[0] + '" cy="' + p[1] + '" r="' + (11 * u) + '" fill="' + S.paper + '" stroke="#1F3D30" stroke-width="' + (2 * u) + '"/>' +
           '<text x="' + p[0] + '" y="' + (p[1] + 4 * u) + '" text-anchor="middle" font-family="DM Mono, monospace" font-size="' + (11 * u) + '" fill="#1F3D30">' + (i + 1) + '</text></g>');
       });
     }
 
-    // entrance pin
-    var s = u * 1.1;
-    out.push('<g class="m-pin"><g transform="translate(0 0) scale(' + s + ')">' +
-      (opts.mode === 'close' ? '<circle cx="0" cy="0" r="12" fill="none" stroke="#FF48B0" stroke-width="3"><animate attributeName="r" values="10;38" dur="1.8s" repeatCount="indefinite"/><animate attributeName="opacity" values="1;0" dur="1.8s" repeatCount="indefinite"/></circle>' : '') +
-      '<path d="M0 -42 C 14 -42, 22 -30, 14 -18 L 0 0 L -14 -18 C -22 -30, -14 -42, 0 -42 Z" fill="#00A95C" style="mix-blend-mode:multiply"/>' +
+    // entrance pin: riso pulse rings + a gentle bob
+    var s = u * (+S.pin.size || 1.3);
+    var pulse = S.pin.pulse ? '<g class="m-pulses">' +
+      '<circle class="m-pulse" cx="0" cy="0" r="16" fill="none" stroke="' + S.pin.pulseColors[0] + '" stroke-width="3" style="mix-blend-mode:multiply"/>' +
+      '<circle class="m-pulse b" cx="0" cy="0" r="16" fill="none" stroke="' + S.pin.pulseColors[1] + '" stroke-width="3" style="mix-blend-mode:multiply"/>' +
+      '<circle class="m-pulse c" cx="0" cy="0" r="16" fill="' + S.pin.pulseColors[0] + '" opacity=".25" style="mix-blend-mode:multiply"/></g>' : '';
+    out.push('<g class="m-pin"><g transform="scale(' + s + ')">' + pulse +
+      '<ellipse cx="0" cy="1" rx="9" ry="3" fill="#1F3D30" opacity=".3"/>' +
+      '<g class="' + (S.pin.pulse ? 'm-bob' : '') + '">' +
+      '<path d="M0 -42 C 14 -42, 22 -30, 14 -18 L 0 0 L -14 -18 C -22 -30, -14 -42, 0 -42 Z" fill="' + S.pin.color + '" style="mix-blend-mode:multiply"/>' +
       '<path d="M3 -39 C 17 -39, 25 -27, 17 -15 L 3 3 L -11 -15 C -19 -27, -11 -39, 3 -39 Z" fill="none" stroke="#1F3D30" stroke-width="2"/>' +
-      '<path d="M0 -36 C 7 -32, 7 -24, 0 -20 C -7 -24, -7 -32, 0 -36 Z" fill="#F4EFE4"/>' +
-      '<rect x="20" y="-40" width="40" height="18" fill="#F4EFE4"/><text x="24" y="-26" font-family="Bricolage Grotesque, sans-serif" font-weight="800" font-size="14" fill="#1F3D30">BGI</text></g></g>');
+      '<path d="M0 -36 C 7 -32, 7 -24, 0 -20 C -7 -24, -7 -32, 0 -36 Z" fill="' + S.paper + '"/>' +
+      '<rect x="20" y="-40" width="40" height="18" fill="' + S.paper + '"/><text x="24" y="-26" font-family="Bricolage Grotesque, sans-serif" font-weight="800" font-size="14" fill="#1F3D30">BGI</text></g></g></g>');
 
     if (opts.you) {
       var y = proj(opts.you.lat, opts.you.lon);
-      out.push('<g class="m-you"><circle cx="' + y[0] + '" cy="' + y[1] + '" r="' + (18 * u) + '" fill="#FF48B0" opacity="0.35" style="mix-blend-mode:multiply"/>' +
+      out.push('<g class="m-you"><circle cx="' + y[0] + '" cy="' + y[1] + '" r="' + (18 * u) + '" fill="' + S.route.color + '" opacity="0.35" style="mix-blend-mode:multiply"/>' +
         '<circle cx="' + y[0] + '" cy="' + y[1] + '" r="' + (9 * u) + '" fill="#1F3D30"/>' +
-        '<circle cx="' + y[0] + '" cy="' + y[1] + '" r="' + (3.5 * u) + '" fill="#F4EFE4"/></g>');
+        '<circle cx="' + y[0] + '" cy="' + y[1] + '" r="' + (3.5 * u) + '" fill="' + S.paper + '"/></g>');
     }
     out.push('</svg>');
     return out.join('');
   }
 
+  // Calm defaults. Override any of these in config.js → mapStyle (or live with ?tune=1).
+  var DEFAULT_STYLE = {
+    paper: '#F4EFE4',
+    dots: { color: '#00A95C', opacity: 0.2 },
+    streets: { color: '#FFE800', opacity: 0.55, width: 0.8 },
+    bigRoads: { color: '#FF6C2F', opacity: 0.18 },
+    greenway: { color: '#00A95C', opacity: 0.6 },
+    parks: { color: '#00A95C', opacity: 0.45 },
+    water: { color: '#0078BF', opacity: 0.35 },
+    outlines: 0.15,
+    route: { color: '#FF48B0', opacity: 1, width: 9, drawSeconds: 2.4, dashes: true },
+    pin: { color: '#00A95C', size: 1.3, pulse: true, pulseColors: ['#FF48B0', '#00A95C'] }
+  };
+  function mergeStyle(st) {
+    var base = (typeof window !== 'undefined' && window.BGI_CONFIG && window.BGI_CONFIG.mapStyle) || {};
+    var out = JSON.parse(JSON.stringify(DEFAULT_STYLE));
+    [base, st || {}].forEach(function (src) {
+      Object.keys(src).forEach(function (k) {
+        if (src[k] && typeof src[k] === 'object' && !Array.isArray(src[k]) && out[k] && typeof out[k] === 'object') Object.assign(out[k], src[k]);
+        else out[k] = src[k];
+      });
+    });
+    return out;
+  }
+
   root.BGIMap = {
     overpassQuery: overpassQuery, compact: compact, buildGraph: buildGraph, routeTo: routeTo,
-    render: render, haversine: haversine, bearing: bearing, cardinal: cardinal, nearestNode: nearestNode
+    render: render, DEFAULT_STYLE: DEFAULT_STYLE, mergeStyle: mergeStyle, haversine: haversine, bearing: bearing, cardinal: cardinal, nearestNode: nearestNode
   };
 })(typeof window !== 'undefined' ? window : globalThis);

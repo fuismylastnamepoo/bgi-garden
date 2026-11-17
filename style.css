@@ -116,16 +116,27 @@ p { margin: 0; font-size: 16px; line-height: 1.4; }
 .ticket { position: absolute; z-index: 4; right: 16px; top: max(calc(56dvh - 84px), 276px); background: var(--paper); border: 1.5px solid var(--ink); padding: 6px 9px; font-size: 10px; line-height: 1.5; transform: rotate(3deg); box-shadow: 3px 3px 0 var(--yellow); }
 .ticket:empty { display: none; }
 .anim .m-streets { animation: fadein .9s ease both; }
-.anim .m-route { stroke-dasharray: 1; stroke-dashoffset: 1; animation: draw 2.4s .7s cubic-bezier(.5,0,.3,1) forwards; }
-.anim .m-route2 { opacity: 0; animation: fadein .5s 3s forwards; }
+.anim .m-route { stroke-dasharray: 1; stroke-dashoffset: 1; animation: draw var(--draw, 2.4s) .7s cubic-bezier(.5,0,.3,1) forwards; }
+.anim .m-route2 { opacity: 0; animation: fadein .5s calc(var(--draw, 2.4s) + .6s) forwards; }
 .anim .m-pop { opacity: 0; animation: fadein .3s both; }
-.anim .m-pin { opacity: 0; animation: fadein .4s 3s forwards; }
+.anim .m-pin { transform-box: fill-box; transform-origin: 50% 100%; animation: pindrop .7s calc(var(--draw, 2.4s) + .5s) cubic-bezier(.2, 1.7, .4, 1) both; }
 .anim .m-you { animation: fadein .4s .3s both; }
-.anim + .ticket, .ticket.anim { animation: stampin .5s 3.2s cubic-bezier(.2, 1.6, .4, 1) both; }
+.ticket.anim { animation: stampin .5s var(--ticket-delay, 3.2s) cubic-bezier(.2, 1.6, .4, 1) both; }
 @keyframes draw { to { stroke-dashoffset: 0; } }
 @keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
 @keyframes stampin { from { opacity: 0; transform: rotate(3deg) scale(1.8); } to { opacity: 1; transform: rotate(3deg) scale(1); } }
+
+/* the BGI pin: riso pulse rings + a gentle bob */
+.m-pulse { transform-box: fill-box; transform-origin: center; animation: pulse 2.4s ease-out infinite; }
+.m-pulse.b { animation-delay: .8s; }
+.m-pulse.c { animation-delay: 1.6s; }
+.m-bob { animation: bob 2.4s ease-in-out infinite; }
+@keyframes pulse { 0% { transform: scale(.4); opacity: .95; } 100% { transform: scale(3.6); opacity: 0; } }
+@keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+@keyframes pindrop { 0% { opacity: 0; transform: translateY(-40px) scale(.5); } 60% { opacity: 1; } 100% { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) {
+  .m-pulse, .m-bob { animation: none !important; }
+  .m-pulse { opacity: 0 !important; }
   .needle.searching, .seek-ink, .anim .m-streets, .anim .m-route, .anim .m-route2, .anim .m-pop, .anim .m-pin, .anim .m-you, .ticket.anim, #bigarrow.enter #arrow-rot { animation: none !important; opacity: 1 !important; stroke-dashoffset: 0 !important; }
 }
 

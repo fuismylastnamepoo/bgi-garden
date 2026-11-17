@@ -253,7 +253,8 @@
   function paintRoute(animate) {
     var el = $('m-route');
     loadStreets().then(function (data) {
-      if (animate) drawingUntil = Date.now() + 4200;
+      var drawS = +M.mergeStyle().route.drawSeconds || 2.4;
+      if (animate) drawingUntil = Date.now() + (drawS + 1.8) * 1000;
       draw(el, { mode: 'route', you: you, plan: plan, topPx: 90, animate: !!animate, alt: 'Walking route from you to the garden entrance' }, data);
       var tk = $('ticket');
       if (animate || !tk.textContent) {
@@ -262,6 +263,7 @@
         var hh = now.getHours() % 12 || 12, mm = String(now.getMinutes()).padStart(2, '0');
         tk.innerHTML = 'Map Nº ' + mapNo + '<br>drawn for you · ' + hh + ':' + mm + (now.getHours() < 12 ? 'am' : 'pm');
         tk.classList.remove('anim'); void tk.getBoundingClientRect();
+        tk.style.setProperty('--ticket-delay', (drawS + 0.8) + 's');
         if (animate) tk.classList.add('anim');
       }
       var meters = plan ? plan.meters : M.haversine(you, ENT) * 1.3;
@@ -460,5 +462,18 @@
   else { log('scan', {}, true); landing(); }
 
   // exposed for testing
-  window.BGIApp = { hoursStatus: hoursStatus, seasonNow: seasonNow };
+  window.BGIApp = {
+    hoursStatus: hoursStatus, seasonNow: seasonNow,
+    // used by tune.js (?tune=1) to preview map styles on a laptop
+    tune: {
+      at: function (lat, lon) { you = { lat: lat, lon: lon }; },
+      route: function (animate) { if (current === 'route') paintRoute(animate); else showRoute(animate); },
+      current: function () { return current; }
+    }
+  };
+  if (params.get('tune') === '1') {
+    var tsc = document.createElement('script');
+    tsc.src = 'tune.js?v=' + Date.now();
+    document.body.appendChild(tsc);
+  }
 })();

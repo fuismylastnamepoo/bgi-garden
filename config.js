@@ -21,6 +21,22 @@ window.BGI_CONFIG = {
   // Leave empty to log to the browser console only.
   logUrl: '',
 
+  // How the map looks. Tweak live with ?tune=1, then paste the copied block here.
+  // opacity: 0 hides a layer. streets.width scales every street line.
+  // route.drawSeconds = how long the route takes to draw itself.
+  mapStyle: {
+    paper: '#F4EFE4',
+    dots: { color: '#00A95C', opacity: 0.2 },
+    streets: { color: '#FFE800', opacity: 0.55, width: 0.8 },
+    bigRoads: { color: '#FF6C2F', opacity: 0.18 },   // BQE and other highways
+    greenway: { color: '#00A95C', opacity: 0.6 },
+    parks: { color: '#00A95C', opacity: 0.45 },
+    water: { color: '#0078BF', opacity: 0.35 },
+    outlines: 0.15,                                   // thin dark edges on main streets
+    route: { color: '#FF48B0', opacity: 1, width: 9, drawSeconds: 2.4, dashes: true },
+    pin: { color: '#00A95C', size: 1.3, pulse: true, pulseColors: ['#FF48B0', '#00A95C'] }
+  },
+
   // Opening hours. CONFIRM WITH BGI — these follow the published schedule.
   // Each rule: from/to as 'MM-DD' (inclusive), days 0=Sun … 6=Sat, hours 24h.
   hours: [
