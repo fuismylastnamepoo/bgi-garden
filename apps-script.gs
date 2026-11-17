@@ -5,12 +5,15 @@
  * 1. Make a Google Sheet. Extensions → Apps Script. Paste this whole file.
  * 2. Deploy → New deployment → type "Web app".
  *    Execute as: Me.  Who has access: Anyone.
- * 3. Copy the web-app URL into config.js → logUrl.
+ * 3. Copy the web-app URL into config.js → logUrl (and bump the ?v= tag in index.html).
+ * 4. Back here, pick "makeSummaryTabs" in the function menu and press ▶ Run once.
  *
- * Each row: time, event, src (which card batch), detail.
+ * Each row: time, event, src (which card batch), zone (rough area), detail.
+ * zone is a compass direction + distance band from the garden, e.g. "NE · ½–1 mi".
  * The site never sends coordinates, names or device IDs.
  */
-var ALLOWED = ['scan', 'location', 'route_shown', 'opened_maps', 'landmarks_view', 'near_gate', 'gate_scan', 'visit', 'rating', 'remind_me'];
+var ALLOWED = ['scan', 'seek_start', 'location', 'arrow_shown', 'map_drawn', 'route_shown', 'opened_maps',
+  'landmarks_view', 'near_gate', 'gate_scan', 'visit', 'rating', 'remind_me'];
 
 function doPost(e) {
   try {
@@ -18,11 +21,11 @@ function doPost(e) {
     if (ALLOWED.indexOf(p.e) < 0) return out_('ignored');
     var detail = {};
     Object.keys(p).forEach(function (k) {
-      if (['e', 'src', 't'].indexOf(k) < 0) detail[k] = String(p[k]).slice(0, 60);
+      if (['e', 'src', 't', 'zone'].indexOf(k) < 0) detail[k] = String(p[k]).slice(0, 60);
     });
     var sheet = SpreadsheetApp.getActive().getSheetByName('events') || SpreadsheetApp.getActive().insertSheet('events');
-    if (sheet.getLastRow() === 0) sheet.appendRow(['received', 'event', 'src', 'detail']);
-    sheet.appendRow([new Date(), p.e, String(p.src || 'direct').slice(0, 40), JSON.stringify(detail)]);
+    if (sheet.getLastRow() === 0) sheet.appendRow(['received', 'event', 'src', 'zone', 'detail']);
+    sheet.appendRow([new Date(), p.e, String(p.src || 'direct').slice(0, 40), String(p.zone || '').slice(0, 20), JSON.stringify(detail)]);
     return out_('ok');
   } catch (err) {
     return out_('error');
@@ -32,18 +35,26 @@ function doPost(e) {
 function out_(s) { return ContentService.createTextOutput(s); }
 
 /**
- * Optional: run this once (▶ in the editor) to add a "funnel" tab that counts
- * scans → routes → near gate → visits for each card batch.
+ * Run once. Adds two tabs that update by themselves:
+ *  funnel — per card spot: scans → tapped "Show me the way" → map drawn → near gate → stamp visits
+ *  zones  — where maps were drawn from (direction + distance), most first
  */
-function makeFunnel() {
+function makeSummaryTabs() {
   var ss = SpreadsheetApp.getActive();
+  if (!ss.getSheetByName('events')) ss.insertSheet('events').appendRow(['received', 'event', 'src', 'zone', 'detail']);
+
   var f = ss.getSheetByName('funnel') || ss.insertSheet('funnel');
   f.clear();
-  f.getRange('A1:F1').setValues([['src', 'scans', 'routes shown', 'near gate', 'visits (first src)', 'ratings']]);
+  f.getRange('A1:G1').setValues([['card spot (src)', 'scans', 'tapped Show me the way', 'maps drawn', 'near the entrance', 'stamp visits (came from this card)', 'quiet ratings']]);
   f.getRange('A2').setFormula('=UNIQUE(FILTER(events!C2:C, events!C2:C<>""))');
-  f.getRange('B2').setFormula('=ARRAYFORMULA(IF(A2:A="",,COUNTIFS(events!C:C,A2:A,events!B:B,"scan")))');
-  f.getRange('C2').setFormula('=ARRAYFORMULA(IF(A2:A="",,COUNTIFS(events!C:C,A2:A,events!B:B,"route_shown")))');
-  f.getRange('D2').setFormula('=ARRAYFORMULA(IF(A2:A="",,COUNTIFS(events!C:C,A2:A,events!B:B,"near_gate")))');
-  f.getRange('E2').setFormula('=ARRAYFORMULA(IF(A2:A="",,COUNTIFS(events!B:B,"visit",events!D:D,"*\\"first_src\\":\\""&A2:A&"\\"*")))');
-  f.getRange('F2').setFormula('=ARRAYFORMULA(IF(A2:A="",,COUNTIFS(events!C:C,A2:A,events!B:B,"rating")))');
+  var col = function (c, ev) { f.getRange(c + '2').setFormula('=ARRAYFORMULA(IF(A2:A="",,COUNTIFS(events!C:C,A2:A,events!B:B,"' + ev + '")))'); };
+  col('B', 'scan'); col('C', 'seek_start'); col('D', 'map_drawn'); col('E', 'near_gate'); col('G', 'rating');
+  f.getRange('F2').setFormula('=ARRAYFORMULA(IF(A2:A="",,COUNTIFS(events!B:B,"visit",events!E:E,"*\\"first_src\\":\\""&A2:A&"\\"*")))');
+  f.setFrozenRows(1);
+
+  var z = ss.getSheetByName('zones') || ss.insertSheet('zones');
+  z.clear();
+  z.getRange('A1').setFormula("=QUERY(events!A:E, \"select D, count(B) where B = 'map_drawn' and D <> '' group by D order by count(B) desc label D 'where from (direction · distance)', count(B) 'maps drawn'\", 1)");
+  z.getRange('D1').setFormula("=QUERY(events!A:E, \"select C, D, count(B) where B = 'map_drawn' and D <> '' group by C, D order by C, count(B) desc label C 'card spot', D 'where from', count(B) 'maps drawn'\", 1)");
+  z.setFrozenRows(1);
 }
