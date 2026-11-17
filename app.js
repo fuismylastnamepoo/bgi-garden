@@ -163,7 +163,7 @@
       var mins = Math.max(1, Math.round(meters / C.walkSpeedMps / 60));
       $('eta-min').textContent = mins + ' min';
       $('eta-dist').textContent = (meters / 1609).toFixed(1) + ' mi · on foot';
-      var list = plan && plan.steps.length ? plan.steps.slice(0, 6) : [
+      var list = plan && plan.steps.length ? plan.steps : [
         { text: 'Head toward Kent Ave' }, { text: 'Turn onto Williamsburg St West' }
       ];
       var ol = $('steps'); ol.innerHTML = '';
