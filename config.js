@@ -7,7 +7,7 @@ window.BGI_CONFIG = {
 
   // Our hand-drawn map covers roughly a 20-minute walk around the entrance.
   // Beyond this distance (meters) the page shows the "too far" view instead.
-  mapRadiusM: 1700,
+  mapRadiusM: 2400, // ≈ 1.5 mi in a straight line
   // Within this distance (meters) of the entrance → "You're basically here".
   arriveRadiusM: 120,
   walkSpeedMps: 1.3, // ~3 mph
