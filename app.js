@@ -32,7 +32,7 @@
   // ---------- screens ----------
   var current = null, previous = null;
   function show(name) {
-    ['landing', 'seek', 'arrow', 'route', 'arrive', 'far', 'noloc', 'gate'].forEach(function (n) { $('s-' + n).hidden = n !== name; });
+    ['landing', 'seek', 'arrow', 'route', 'arrive', 'far', 'noloc', 'welcome', 'gate'].forEach(function (n) { $('s-' + n).hidden = n !== name; });
     if (current !== name) previous = current;
     current = name; window.scrollTo(0, 0);
   }
@@ -388,42 +388,152 @@
       '<path d="M90 34L90 148M90 70L112 56M90 92L68 76M90 114L114 98" fill="none" stroke="#F4EFE4" stroke-width="4" stroke-linecap="round"/></g>' +
       '<circle cx="132" cy="44" r="16" fill="#FFE800" style="mix-blend-mode:multiply"/></svg>';
   }
+  // ---------- F · activities (riso icons: a colored print layer + an offset ink outline) ----------
+  var ACTIVITIES = [
+    { id: 'reading', label: 'Reading', ink: '#FFE800',
+      fill: '<path d="M6 12C14 9 20 10 24 14C28 10 34 9 42 12V38C34 35 28 36 24 40C20 36 14 35 6 38Z"/>',
+      line: '<path d="M6 12C14 9 20 10 24 14C28 10 34 9 42 12V38C34 35 28 36 24 40C20 36 14 35 6 38Z"/><path d="M24 14V40M11 18C15 17 18 17 20 19M28 19C30 17 33 17 37 18"/>' },
+    { id: 'sitting', label: 'Sitting', ink: '#FF48B0',
+      fill: '<rect x="7" y="11" width="34" height="8" rx="2"/><rect x="7" y="22" width="34" height="7" rx="2"/>',
+      line: '<rect x="7" y="11" width="34" height="8" rx="2"/><rect x="7" y="22" width="34" height="7" rx="2"/><path d="M12 29V39M36 29V39M12 19V22M36 19V22"/>' },
+    { id: 'writing', label: 'Writing', ink: '#00A95C',
+      fill: '<path d="M31 7L41 17L18 40H8V30Z"/>',
+      line: '<path d="M31 7L41 17L18 40H8V30Z"/><path d="M27 11L37 21M8 30L18 40M24 43H42"/>' },
+    { id: 'crafting', label: 'Crafting', ink: '#0078BF',
+      fill: '<circle cx="15" cy="34" r="7"/><circle cx="33" cy="34" r="7"/>',
+      line: '<circle cx="15" cy="34" r="6"/><circle cx="33" cy="34" r="6"/><path d="M19 29L35 6M29 29L13 6"/>' },
+    { id: 'sketching', label: 'Sketching', ink: '#FF6C2F',
+      fill: '<rect x="7" y="8" width="34" height="32" rx="2"/>',
+      line: '<rect x="7" y="8" width="34" height="32" rx="2"/><path d="M13 31C17 20 21 34 25 22S33 17 36 27"/>' },
+    { id: 'working', label: 'Working', ink: '#765BA7',
+      fill: '<rect x="10" y="9" width="28" height="21" rx="2"/>',
+      line: '<rect x="10" y="9" width="28" height="21" rx="2"/><path d="M5 34H43L39 39H9Z"/>' },
+    { id: 'listening', label: 'Bird listening', ink: '#00A95C',
+      fill: '<path d="M8 28C8 18 19 13 28 18L39 14L35 22C37 33 26 39 17 36L8 41Z"/>',
+      line: '<path d="M8 28C8 18 19 13 28 18L39 14L35 22C37 33 26 39 17 36L8 41Z"/><circle cx="27" cy="22" r="1.6" fill="#1F3D30"/><path d="M15 27C18 31 23 31 27 29"/>' },
+    { id: 'nothing', label: 'Doing nothing', ink: '#FFE800',
+      fill: '<path d="M12 34A8 8 0 0 1 13 18A11 11 0 0 1 33 15A9 9 0 0 1 36 34Z"/>',
+      line: '<path d="M12 34A8 8 0 0 1 13 18A11 11 0 0 1 33 15A9 9 0 0 1 36 34Z"/><path d="M30 39H36L30 44H36M38 4H43L38 9H43"/>' }
+  ];
+  function actIcon(a) {
+    return '<svg viewBox="0 0 48 48" aria-hidden="true">' +
+      '<g fill="' + a.ink + '" style="mix-blend-mode:multiply" transform="translate(2.5 2)">' + a.fill + '</g>' +
+      '<g fill="none" stroke="#1F3D30" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">' + a.line + '</g></svg>';
+  }
+
+  var gateState = null;
   function showGate() {
-    show('gate');
     var now = new Date(), cur = seasonNow(now);
     var stamps = get('bgi_stamps', {}), had = !!stamps[cur.key];
     var today = now.toISOString().slice(0, 10), last = get('bgi_last_visit', null);
     var visits = get('bgi_visits', 0);
     if (last !== today) { visits += 1; set('bgi_visits', visits); set('bgi_last_visit', today); log('visit', { first_src: firstSrc || 'none', season: cur.s.id, repeat: visits > 1 }); }
     if (!had) { stamps[cur.key] = { date: today }; set('bgi_stamps', stamps); }
+    gateState = { now: now, cur: cur, stamps: stamps, had: had, today: today, visits: visits };
     var yy = "’" + String(cur.year).slice(2);
-    $('visit-n').textContent = 'visit ' + visits;
-    $('gate-h').textContent = had ? 'Welcome back.' : 'You made it.';
-    $('gate-sub').textContent = had ? 'You already have the ' + cur.s.label + ' ' + yy + ' stamp. Come back next season for the next one.' : cur.s.label + ' ' + yy + ' stamp is saved to this phone.';
-    $('stamp-hero').innerHTML = '<div class="stamp" role="img" aria-label="' + cur.s.label + ' stamp, collected">' + stampSVG(cur.s.ink, false, 170) + '<span>' + cur.s.label + ' ' + yy + '</span></div>';
-    // this season and the next three
-    var book = $('book'); book.innerHTML = '';
-    for (var k = 0; k < 4; k++) {
-      var sn = seasonNow(new Date(now.getFullYear(), now.getMonth() + 3 * k, 1)), s = sn.s;
-      var got = !!stamps[sn.key], lab = s.label + " ’" + String(sn.year).slice(2);
-      var div = document.createElement('div'); div.className = 'stamp';
-      div.setAttribute('role', 'img'); div.setAttribute('aria-label', lab + ' stamp, ' + (got ? 'collected' : 'not yet'));
-      div.innerHTML = stampSVG(s.ink, !got, 112) + '<span>' + lab + '</span>';
-      book.appendChild(div);
+
+    // F0 · the welcome
+    show('welcome');
+    $('wl-kicker').textContent = 'Greenway Botanical Garden · visit ' + visits;
+    $('wl-stamp').innerHTML = '<div class="stamp" role="img" aria-label="' + cur.s.label + ' ' + yy + ' stamp">' + stampSVG(cur.s.ink, false, 120) + '<span>' + cur.s.label + ' ' + yy + '</span></div>';
+    $('wl-sub').textContent = had
+      ? 'Welcome back. You already have the ' + cur.s.label + ' ' + yy + ' stamp. Next season brings a new one.'
+      : 'You collected the ' + cur.s.label + ' ' + yy + ' stamp. It lives on this phone.';
+    say('Welcome to the quiet. ' + $('wl-sub').textContent);
+    $('wl-go').onclick = showLog;
+  }
+
+  // F · the field log inside the garden
+  function showLog() {
+    var g = gateState; if (!g) return;
+    show('gate');
+    $('visit-n').textContent = 'visit ' + g.visits;
+
+    // activities: multi-select tiles
+    var done = get('bgi_acts_' + g.today, null), chosen = {};
+    var box = $('acts'); box.innerHTML = '';
+    ACTIVITIES.forEach(function (a) {
+      var b = document.createElement('button');
+      b.className = 'act'; b.type = 'button';
+      var on = !!(done && done.indexOf(a.id) >= 0);
+      b.setAttribute('aria-pressed', String(on));
+      if (on) chosen[a.id] = 1;
+      b.innerHTML = actIcon(a) + '<span></span><span class="tick" aria-hidden="true">✓</span>';
+      b.children[1].textContent = a.label;
+      b.disabled = !!done;
+      b.onclick = function () {
+        var nowOn = b.getAttribute('aria-pressed') !== 'true';
+        b.setAttribute('aria-pressed', String(nowOn));
+        if (nowOn) chosen[a.id] = 1; else delete chosen[a.id];
+        var n = Object.keys(chosen).length;
+        $('acts-save').disabled = n === 0;
+        $('acts-save-label').textContent = n === 0 ? 'Pick at least one' : 'Log it (' + n + ')';
+      };
+      box.appendChild(b);
+    });
+    var save = $('acts-save');
+    if (done) {
+      save.hidden = true;
+      $('acts-state').textContent = 'logged today · thanks';
+    } else {
+      save.hidden = false; save.disabled = true;
+      $('acts-save-label').textContent = 'Pick at least one';
+      $('acts-state').textContent = '';
+      save.onclick = function () {
+        var ids = Object.keys(chosen); if (!ids.length) return;
+        set('bgi_acts_' + g.today, ids);
+        var tally = get('bgi_tally', {});
+        ids.forEach(function (id) { tally[id] = (tally[id] || 0) + 1; });
+        set('bgi_tally', tally);
+        log('activities', { did: ids.join(','), n: ids.length });
+        Array.prototype.forEach.call(box.children, function (b) { b.disabled = true; });
+        save.hidden = true;
+        $('acts-state').textContent = 'logged · thanks for sharing';
+        say('Logged. Thanks.');
+        renderHabits();
+      };
     }
-    var picked = get('bgi_rated_' + today, null);
+
+    // quiet rating (unchanged)
+    var picked = get('bgi_rated_' + g.today, null);
+    $('rating-state').textContent = picked ? 'logged · thanks' : 'one tap · anonymous';
     Array.prototype.forEach.call(document.querySelectorAll('#rating .opt'), function (b) {
       b.setAttribute('aria-pressed', String(b.dataset.r === picked));
       b.onclick = function () {
-        if (get('bgi_rated_' + today, null) === b.dataset.r) return;
-        set('bgi_rated_' + today, b.dataset.r);
+        if (get('bgi_rated_' + g.today, null) === b.dataset.r) return;
+        set('bgi_rated_' + g.today, b.dataset.r);
         log('rating', { r: b.dataset.r });
         Array.prototype.forEach.call(document.querySelectorAll('#rating .opt'), function (o) { o.setAttribute('aria-pressed', String(o === b)); });
         $('rating-state').textContent = 'logged · thanks';
         say('Thanks, logged.');
       };
     });
-    if (picked) $('rating-state').textContent = 'logged · thanks';
+
+    // notebook: this season and the next three
+    var book = $('book'); book.innerHTML = '';
+    for (var k = 0; k < 4; k++) {
+      var sn = seasonNow(new Date(g.now.getFullYear(), g.now.getMonth() + 3 * k, 1)), s = sn.s;
+      var got = !!g.stamps[sn.key], lab = s.label + " ’" + String(sn.year).slice(2);
+      var div = document.createElement('div'); div.className = 'stamp';
+      div.setAttribute('role', 'img'); div.setAttribute('aria-label', lab + ' stamp, ' + (got ? 'collected' : 'not yet'));
+      div.innerHTML = stampSVG(s.ink, !got, 112) + '<span>' + lab + '</span>';
+      book.appendChild(div);
+    }
+    renderHabits();
+  }
+
+  // what this phone tends to do here, across visits
+  function renderHabits() {
+    var tally = get('bgi_tally', {}), ids = Object.keys(tally).sort(function (x, y) { return tally[y] - tally[x]; });
+    $('habits').hidden = !ids.length;
+    var row = $('habit-row'); row.innerHTML = '';
+    ids.forEach(function (id) {
+      var a = ACTIVITIES.filter(function (x) { return x.id === id; })[0]; if (!a) return;
+      var chip = document.createElement('span'); chip.className = 'habit';
+      chip.innerHTML = actIcon(a) + '<span></span>';
+      chip.lastChild.textContent = a.label + ' ×' + tally[id];
+      row.appendChild(chip);
+    });
   }
 
   // ---------- wiring ----------

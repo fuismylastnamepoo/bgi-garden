@@ -13,7 +13,7 @@
  * The site never sends coordinates, names or device IDs.
  */
 var ALLOWED = ['scan', 'seek_start', 'location', 'arrow_shown', 'map_drawn', 'route_shown', 'opened_maps',
-  'landmarks_view', 'near_gate', 'gate_scan', 'visit', 'rating', 'remind_me'];
+  'landmarks_view', 'near_gate', 'gate_scan', 'visit', 'activities', 'rating', 'remind_me'];
 
 function doPost(e) {
   try {
@@ -38,6 +38,7 @@ function out_(s) { return ContentService.createTextOutput(s); }
  * Run once. Adds two tabs that update by themselves:
  *  funnel — per card spot: scans → tapped "Show me the way" → map drawn → near gate → stamp visits
  *  zones  — where maps were drawn from (direction + distance), most first
+ *  activities — what people did in the garden (Reading, Sitting, Writing, …)
  */
 function makeSummaryTabs() {
   var ss = SpreadsheetApp.getActive();
@@ -57,4 +58,18 @@ function makeSummaryTabs() {
   z.getRange('A1').setFormula("=QUERY(events!A:E, \"select D, count(B) where B = 'map_drawn' and D <> '' group by D order by count(B) desc label D 'where from (direction · distance)', count(B) 'maps drawn'\", 1)");
   z.getRange('D1').setFormula("=QUERY(events!A:E, \"select C, D, count(B) where B = 'map_drawn' and D <> '' group by C, D order by C, count(B) desc label C 'card spot', D 'where from', count(B) 'maps drawn'\", 1)");
   z.setFrozenRows(1);
+
+  var a = ss.getSheetByName('activities') || ss.insertSheet('activities');
+  a.clear();
+  var acts = [['reading', 'Reading'], ['sitting', 'Sitting'], ['writing', 'Writing'], ['crafting', 'Crafting'],
+    ['sketching', 'Sketching'], ['working', 'Working'], ['listening', 'Bird listening'], ['nothing', 'Doing nothing']];
+  a.getRange('A1:C1').setValues([['activity', 'times logged', 'share of check-ins']]);
+  acts.forEach(function (x, i) {
+    var r = i + 2;
+    a.getRange(r, 1).setValue(x[1]);
+    a.getRange(r, 2).setFormula('=COUNTIFS(events!B:B,"activities",events!E:E,"*' + x[0] + '*")');
+    a.getRange(r, 3).setFormula('=IFERROR(B' + r + '/COUNTIF(events!B:B,"activities"),0)');
+  });
+  a.getRange('C2:C9').setNumberFormat('0%');
+  a.setFrozenRows(1);
 }

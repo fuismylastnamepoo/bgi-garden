@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=2026-11-17d">
+<link rel="stylesheet" href="style.css?v=2026-11-17e">
 </head>
 <body>
 <div class="app">
@@ -161,13 +161,39 @@
   </div>
 </section>
 
-<!-- F · at the gate (?at=gate) -->
+<!-- F0 · animated welcome at the entrance (?at=gate) -->
+<section class="screen welcome" id="s-welcome" hidden>
+  <svg class="wl-scene" viewBox="0 0 390 844" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+    <defs><pattern id="wDots" width="8" height="8" patternUnits="userSpaceOnUse"><circle cx="4" cy="4" r="1.3" fill="#00A95C"/></pattern></defs>
+    <rect width="390" height="844" fill="url(#wDots)" opacity=".25"/>
+    <g class="wl-sun"><circle cx="250" cy="250" r="130" fill="#FFE800" style="mix-blend-mode:multiply"/><circle cx="262" cy="262" r="130" fill="#FF48B0" opacity=".3" style="mix-blend-mode:multiply"/></g>
+    <g class="wl-leaf a"><path d="M40 120 C 90 60, 160 70, 190 110 C 150 160, 80 170, 40 120 Z" fill="#00A95C" style="mix-blend-mode:multiply"/><path d="M44 120 C 100 108, 150 106, 188 110" stroke="#F4EFE4" stroke-width="3" fill="none"/></g>
+    <g class="wl-leaf b"><path d="M300 420 C 350 380, 400 400, 420 440 C 380 480, 330 470, 300 420 Z" fill="#FF48B0" style="mix-blend-mode:multiply"/><path d="M304 420 C 350 425, 390 432, 418 440" stroke="#F4EFE4" stroke-width="3" fill="none"/></g>
+    <g class="wl-leaf c"><path d="M-20 690 C 30 640, 100 650, 120 700 C 80 740, 10 740, -20 690 Z" fill="#00A95C" style="mix-blend-mode:multiply"/><path d="M-16 690 C 30 695, 80 698, 118 700" stroke="#F4EFE4" stroke-width="3" fill="none"/></g>
+    <g class="wl-grass" fill="none" stroke="#00A95C" stroke-width="7" stroke-linecap="round" style="mix-blend-mode:multiply">
+      <path d="M20 844 C 22 790, 30 760, 44 730"/><path d="M60 844 C 58 800, 52 770, 40 740"/><path d="M110 844 C 114 780, 126 750, 140 720"/>
+      <path d="M170 844 C 168 800, 160 776, 150 756"/><path d="M230 844 C 234 790, 248 762, 262 736"/><path d="M290 844 C 288 796, 280 772, 268 752"/>
+      <path d="M340 844 C 344 784, 356 756, 372 730"/><path d="M380 844 C 378 800, 372 778, 362 760"/>
+    </g>
+  </svg>
+  <div class="wl-text">
+    <span class="mono wl-kicker" id="wl-kicker">Greenway Botanical Garden</span>
+    <h1 class="wl-h"><span>Welcome</span> <span>to</span> <span>the</span> <span>quiet.</span></h1>
+    <div class="wl-stamp" id="wl-stamp"></div>
+    <p class="wl-sub" id="wl-sub"></p>
+    <button class="btn wl-go" id="wl-go"><span>Come in</span><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12H20M14 6l6 6-6 6"/></svg></button>
+  </div>
+</section>
+
+<!-- F · inside the garden: what are you doing, how quiet, notebook -->
 <section class="screen" id="s-gate" hidden>
   <div class="pad">
-    <div class="mono" style="display:flex;justify-content:space-between"><span>BGI · check-in</span><span id="visit-n"></span></div>
-    <h1 id="gate-h">You made it.</h1>
-    <p id="gate-sub"></p>
-    <div class="stamp-hero" id="stamp-hero"></div>
+    <div class="mono" style="display:flex;justify-content:space-between"><span>BGI · field log</span><span id="visit-n"></span></div>
+    <h1 id="gate-h">What’s your quiet thing today?</h1>
+    <p>Tap everything that fits, now or on your way out. Anonymous.</p>
+    <div class="acts" id="acts" role="group" aria-label="What you’re doing here"></div>
+    <button class="btn" id="acts-save" disabled><span id="acts-save-label">Pick at least one</span></button>
+    <p class="mono" id="acts-state" aria-live="polite"></p>
     <div class="rating" id="rating">
       <h2>How quiet was it?</h2>
       <span class="mono" id="rating-state">one tap · anonymous</span>
@@ -177,6 +203,7 @@
     </div>
     <h2 style="margin:8px 0 0;font-size:22px;font-weight:800">Your field notebook</h2>
     <div class="book" id="book"></div>
+    <div class="habits" id="habits" hidden><span class="mono">your garden habits</span><div class="habit-row" id="habit-row"></div></div>
     <p class="small" style="border:2px dashed #1F3D30;padding:12px 14px">Your stamps live on this phone, not on our server. We only count scans and taps.</p>
   </div>
 </section>
@@ -184,8 +211,8 @@
 <svg class="grain" aria-hidden="true" width="100%" height="100%"><filter id="grain"><feTurbulence type="fractalNoise" baseFrequency=".85" numOctaves="2" stitchTiles="stitch"/><feColorMatrix values="0 0 0 0 .12  0 0 0 0 .24  0 0 0 0 .19  0 0 0 .35 0"/></filter><rect width="100%" height="100%" filter="url(#grain)"/></svg>
 <p class="visually-hidden" aria-live="polite" id="live"></p>
 </div>
-<script src="config.js?v=2026-11-17d"></script>
-<script src="map.js?v=2026-11-17d"></script>
-<script src="app.js?v=2026-11-17d"></script>
+<script src="config.js?v=2026-11-17e"></script>
+<script src="map.js?v=2026-11-17e"></script>
+<script src="app.js?v=2026-11-17e"></script>
 </body>
 </html>
