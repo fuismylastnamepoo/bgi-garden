@@ -168,8 +168,8 @@
       var faceDeg = heading === null ? b : b - heading;
       setTimeout(function () {
         lockSeek(faceDeg, b, function () {
-          if (d > C.mapRadiusM) { log('location', { result: 'far' }); return showFar(); }
-          log('location', { result: 'yes' });
+          if (d > C.mapRadiusM) { log('location', { result: 'far', zone: zone() }); return showFar(); }
+          log('location', { result: 'yes', zone: zone() });
           if (d <= C.arriveRadiusM) showArrive(); else showArrow();
           startWatch();
         });
@@ -179,6 +179,16 @@
       log('location', { result: err.code === 1 ? 'denied' : 'error' });
       showNoloc(err.code === 1 ? 'denied' : 'error');
     }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 });
+  }
+
+  // ---------- rough area (never the exact spot) ----------
+  // Direction from the garden + distance band, e.g. "NE · ½–1 mi". 8 × 5 = 40 possible zones.
+  function zone() {
+    if (!you) return 'unknown';
+    var d = M.haversine(ENT, you) / 1609;
+    var dir = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'][Math.round(M.bearing(ENT, you) / 45) % 8];
+    var band = d < 0.25 ? '0–¼ mi' : d < 0.5 ? '¼–½ mi' : d < 1 ? '½–1 mi' : d < 1.5 ? '1–1½ mi' : '1½+ mi';
+    return dir + ' · ' + band;
   }
 
   // ---------- A3 · the big arrow ----------
@@ -195,6 +205,7 @@
   }
   headingListeners.push(paintArrow);
   function showArrow() {
+    log('arrow_shown', { zone: zone() }, true);
     show('arrow');
     var d = M.haversine(you, ENT), b = M.bearing(you, ENT);
     var mins = Math.max(1, Math.round(d * 1.3 / C.walkSpeedMps / 60));
@@ -426,11 +437,15 @@
     loadStreets().then(function (data) { draw(el, { mode: 'static', alt: 'Map of the streets around the garden entrance' }, data); });
   }
 
-  function go() { startHeading(); askLocation(); }
+  function go() { log('seek_start'); startHeading(); askLocation(); }
   $('go').onclick = go;
   $('retry').onclick = go;
   $('landmarks').onclick = function () { log('location', { result: 'skipped' }); showNoloc(null); };
-  $('draw-map').onclick = function () { showRoute(true); };
+  $('draw-map').onclick = function () {
+    var mins = Math.max(1, Math.round(M.haversine(you, ENT) * 1.3 / C.walkSpeedMps / 60));
+    log('map_drawn', { zone: zone(), mins: mins }, true);
+    showRoute(true);
+  };
   $('arrow-landmarks').onclick = function () { log('landmarks_view'); showNoloc(null); };
   $('route-landmarks').onclick = function () { log('landmarks_view'); showNoloc(null); };
   $('arrow-gmaps').addEventListener('click', function () { log('opened_maps', { mode: 'walk', from: 'arrow' }); });
@@ -471,7 +486,7 @@
       current: function () { return current; }
     }
   };
-  if (params.get('tune') === '1') {
+  if (params.has('tune')) { // any ?tune link works, even with stray punctuation
     var tsc = document.createElement('script');
     tsc.src = 'tune.js?v=' + Date.now();
     document.body.appendChild(tsc);
