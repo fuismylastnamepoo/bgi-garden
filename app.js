@@ -71,7 +71,7 @@
   var streetsP = null, graph = null;
   function loadStreets() {
     if (streetsP) return streetsP;
-    streetsP = fetch(C.streetsUrl, { cache: 'force-cache' })
+    streetsP = fetch(C.streetsUrl, { cache: 'no-cache' }) // revalidates via ETag: cheap, never stale
       .then(function (r) { if (!r.ok) throw new Error('no baked file'); return r.json(); })
       .catch(function () {
         var cached = get('bgi_streets_v1', null);
