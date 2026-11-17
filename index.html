@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=2026-11-17c">
+<link rel="stylesheet" href="style.css?v=2026-11-17d">
 </head>
 <body>
 <div class="app">
@@ -23,7 +23,7 @@
     <div class="chip" id="open-chip"><span class="dot" aria-hidden="true"></span><span>Checking hours…</span></div>
     <div style="display:flex;flex-direction:column;gap:8px;margin-top:4px">
       <button class="btn" id="go"><span>Show me the way</span><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12H20M14 6l6 6-6 6"/></svg></button>
-      <p class="small">Asks for your location once. It never leaves this phone.</p>
+      <p class="small">Asks for your location once. Your exact spot never leaves this phone.</p>
     </div>
     <button class="linkbtn" id="landmarks">No location? Find it by landmarks</button>
     <div class="foot mono"><span>BGI · Brooklyn Greenway</span><span id="src-label"></span></div>
@@ -56,7 +56,7 @@
       <circle cx="150" cy="150" r="7" fill="#1F3D30"/>
     </svg>
     <p class="seek-line" id="seek-line" aria-live="polite">Finding you…</p>
-    <p class="small">Your location stays on this phone.</p>
+    <p class="small">Your exact spot stays on this phone.</p>
   </div>
 </section>
 
@@ -184,8 +184,8 @@
 <svg class="grain" aria-hidden="true" width="100%" height="100%"><filter id="grain"><feTurbulence type="fractalNoise" baseFrequency=".85" numOctaves="2" stitchTiles="stitch"/><feColorMatrix values="0 0 0 0 .12  0 0 0 0 .24  0 0 0 0 .19  0 0 0 .35 0"/></filter><rect width="100%" height="100%" filter="url(#grain)"/></svg>
 <p class="visually-hidden" aria-live="polite" id="live"></p>
 </div>
-<script src="config.js?v=2026-11-17c"></script>
-<script src="map.js?v=2026-11-17c"></script>
-<script src="app.js?v=2026-11-17c"></script>
+<script src="config.js?v=2026-11-17d"></script>
+<script src="map.js?v=2026-11-17d"></script>
+<script src="app.js?v=2026-11-17d"></script>
 </body>
 </html>
