@@ -19,7 +19,7 @@ window.BGI_CONFIG = {
 
   // Anonymous event log. Paste your Google Apps Script web-app URL here.
   // Leave empty to log to the browser console only.
-  logUrl: '',
+  logUrl: 'https://script.google.com/macros/s/AKfycbwegNmoIlhYnvEJWeOvlmL2KBCcYgmDu7d5pqckJEwwqcPYa_tfC3ajDWuxljIur5AfFg/exec', // "BGI scan logger" → Sheet "BGI QR scans"
 
   // How the map looks. Tweak live with ?tune=1, then paste the copied block here.
   // opacity: 0 hides a layer. streets.width scales every street line.
